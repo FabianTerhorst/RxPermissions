@@ -191,7 +191,7 @@ public class RxPermissions {
                 .flatMap(new Function<Object, Single<Permission>>() {
                     @Override
                     public Single<Permission> apply(Object o) throws Exception {
-                        return requestSingleImplementation(permission);
+                        return requestImplementation(permission);
                     }
                 });
     }
@@ -253,7 +253,7 @@ public class RxPermissions {
     }
 
     @TargetApi(Build.VERSION_CODES.M)
-    private Single<Permission> requestSingleImplementation(final String permission) {
+    private Single<Permission> requestImplementation(final String permission) {
         mRxPermissionsFragment.log("Requesting permission " + permission);
         if (isGranted(permission)) {
             // Already granted, or not Android M
