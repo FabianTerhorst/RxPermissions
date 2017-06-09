@@ -1,9 +1,10 @@
 buildscript {
     repositories {
         jcenter()
+        maven { url 'https://maven.google.com' }
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.3.0'
+        classpath 'com.android.tools.build:gradle:3.0.0-alpha3'
         classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
         classpath 'com.github.dcendents:android-maven-gradle-plugin:1.5'
     }
@@ -12,23 +13,24 @@ buildscript {
 subprojects {
     repositories {
         jcenter()
+        maven { url 'https://maven.google.com' }
     }
 }
 
 ext {
-    minSdkVersion = 11
+    minSdkVersion = 14
     compileSdkVersion = 25
     targetSdkVersion = compileSdkVersion
-    buildToolsVersion = '25.0.2'
+    buildToolsVersion = '25.0.3'
 
-    rxJava = 'io.reactivex.rxjava2:rxjava:2.0.6'
-    supportLibraryVersion = '25.2.0'
+    rxJava = 'io.reactivex.rxjava2:rxjava:2.1.0'
+    supportLibraryVersion = '25.4.0'
     appCompat = "com.android.support:appcompat-v7:$supportLibraryVersion"
     supportAnnotations = "com.android.support:support-annotations:$supportLibraryVersion"
     junit = 'junit:junit:4.12'
-    mockito = 'org.mockito:mockito-core:1.10.19'
+    mockito = 'org.mockito:mockito-core:2.8.9'
 
-    robolectricVersion = '3.1.4'
+    robolectricVersion = '3.3.2'
     robolectric = "org.robolectric:robolectric:$robolectricVersion"
     robolectricShadowsSupport = "org.robolectric:shadows-support-v4:$robolectricVersion"
     // Workaround for https://github.com/robolectric/robolectric/issues/1932
@@ -40,7 +42,7 @@ ext {
     publishedGroupId = 'com.tbruyelle.rxpermissions2'
     artifact = 'rxpermissions'
     libraryName = 'RxPermissions'
-    libraryVersion = '0.9.4'
+    libraryVersion = '0.9.5'
 
     libraryDescription = 'A wrapper for Android 6.0 permissions'
 
