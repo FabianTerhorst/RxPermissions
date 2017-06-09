@@ -7,9 +7,12 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.util.Log;
-import io.reactivex.subjects.PublishSubject;
+
 import java.util.HashMap;
 import java.util.Map;
+
+import io.reactivex.subjects.PublishSubject;
+import io.reactivex.subjects.SingleSubject;
 
 public class RxPermissionsFragment extends Fragment {
 
@@ -18,6 +21,7 @@ public class RxPermissionsFragment extends Fragment {
     // Contains all the current permission requests.
     // Once granted or denied, they are removed from it.
     private Map<String, PublishSubject<Permission>> mSubjects = new HashMap<>();
+    private Map<String, SingleSubject<Permission>> mSingleSubjects = new HashMap<>();
     private boolean mLogging;
 
     public RxPermissionsFragment() {
@@ -53,16 +57,24 @@ public class RxPermissionsFragment extends Fragment {
         for (int i = 0, size = permissions.length; i < size; i++) {
             log("onRequestPermissionsResult  " + permissions[i]);
             // Find the corresponding subject
-            PublishSubject<Permission> subject = mSubjects.get(permissions[i]);
-            if (subject == null) {
-                // No subject found
-                Log.e(RxPermissions.TAG, "RxPermissions.onRequestPermissionsResult invoked but didn't find the corresponding permission request.");
-                return;
+
+            SingleSubject<Permission> singleSubject = mSingleSubjects.get(permissions[i]);
+            if (singleSubject == null) {
+                PublishSubject<Permission> subject = mSubjects.get(permissions[i]);
+                if (subject == null) {
+                    // No subject found
+                    Log.e(RxPermissions.TAG, "RxPermissions.onRequestPermissionsResult invoked but didn't find the corresponding permission request.");
+                    return;
+                }
+                mSubjects.remove(permissions[i]);
+                boolean granted = grantResults[i] == PackageManager.PERMISSION_GRANTED;
+                subject.onNext(new Permission(permissions[i], granted, shouldShowRequestPermissionRationale[i]));
+                subject.onComplete();
+            } else {
+                mSingleSubjects.remove(permissions[i]);
+                boolean granted = grantResults[i] == PackageManager.PERMISSION_GRANTED;
+                singleSubject.onSuccess(new Permission(permissions[i], granted, shouldShowRequestPermissionRationale[i]));
             }
-            mSubjects.remove(permissions[i]);
-            boolean granted = grantResults[i] == PackageManager.PERMISSION_GRANTED;
-            subject.onNext(new Permission(permissions[i], granted, shouldShowRequestPermissionRationale[i]));
-            subject.onComplete();
         }
     }
 
@@ -84,12 +96,20 @@ public class RxPermissionsFragment extends Fragment {
         return mSubjects.get(permission);
     }
 
+    public SingleSubject<Permission> getSingleSubjectByPermission(@NonNull String permission) {
+        return mSingleSubjects.get(permission);
+    }
+
     public boolean containsByPermission(@NonNull String permission) {
         return mSubjects.containsKey(permission);
     }
 
     public PublishSubject<Permission> setSubjectForPermission(@NonNull String permission, @NonNull PublishSubject<Permission> subject) {
         return mSubjects.put(permission, subject);
+    }
+
+    public SingleSubject<Permission> setSingleSubjectForPermission(@NonNull String permission, @NonNull SingleSubject<Permission> subject) {
+        return mSingleSubjects.put(permission, subject);
     }
 
     void log(String message) {
