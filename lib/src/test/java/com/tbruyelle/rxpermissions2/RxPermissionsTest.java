@@ -27,8 +27,8 @@ import org.junit.runner.*;
 import org.mockito.*;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
-import org.robolectric.util.ActivityController;
 
 import io.reactivex.Observable;
 import io.reactivex.observers.TestObserver;

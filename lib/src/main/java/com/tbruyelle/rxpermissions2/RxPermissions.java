@@ -32,7 +32,6 @@ import io.reactivex.SingleSource;
 import io.reactivex.SingleTransformer;
 import io.reactivex.functions.Function;
 import io.reactivex.subjects.PublishSubject;
-import io.reactivex.subjects.SingleSubject;
 
 public class RxPermissions {
 
@@ -106,25 +105,31 @@ public class RxPermissions {
     }
 
     @SuppressWarnings("WeakerAccess")
-    public <T> SingleTransformer<T, Boolean> ensure(final String permission) {
+    public <T> SingleTransformer<T, Boolean> ensureSingle(final String... permissions) {
         return new SingleTransformer<T, Boolean>() {
             @Override
             public SingleSource<Boolean> apply(Single<T> o) {
-                return request(o, permission)
-                        // Transform Single<Permission> to Single<Boolean>
-                        .flatMap(new Function<Permission, SingleSource<Boolean>>() {
+                return request(o.toObservable(), permissions)
+                        // Transform Observable<Permission> to Observable<Boolean>
+                        .buffer(permissions.length)
+                        .flatMap(new Function<List<Permission>, ObservableSource<Boolean>>() {
                             @Override
-                            public SingleSource<Boolean> apply(Permission permission) throws Exception {
-                                if (permission == null) {
+                            public ObservableSource<Boolean> apply(List<Permission> permissions) throws Exception {
+                                if (permissions.isEmpty()) {
                                     // Occurs during orientation change, when the subject receives onComplete.
                                     // In that case we don't want to propagate that empty list to the
                                     // subscriber, only the onComplete.
-                                    return Single.just(false);//Todo: correct? before was Observable.empty()
+                                    return Observable.empty();
                                 }
-                                // Return true if the permission is granted.
-                                return Single.just(permission.granted);
+                                // Return true if all permissions are granted.
+                                for (Permission p : permissions) {
+                                    if (!p.granted) {
+                                        return Observable.just(false);
+                                    }
+                                }
+                                return Observable.just(true);
                             }
-                        });
+                        }).singleOrError();
             }
         };
     }
@@ -173,25 +178,6 @@ public class RxPermissions {
                     @Override
                     public Observable<Permission> apply(Object o) throws Exception {
                         return requestImplementation(permissions);
-                    }
-                });
-    }
-
-    private Single<Permission> request(final Single<?> trigger, final String permission) {
-        if (permission == null) {
-            throw new IllegalArgumentException("RxPermissions.request/requestEach requires at least one input permission");
-        }
-        final Single<?> permissionSingle;
-        if (!mRxPermissionsFragment.containsByPermission(permission)) {
-            permissionSingle = trigger;
-        } else {
-            permissionSingle = Single.just(TRIGGER);
-        }
-        return permissionSingle
-                .flatMap(new Function<Object, Single<Permission>>() {
-                    @Override
-                    public Single<Permission> apply(Object o) throws Exception {
-                        return requestImplementation(permission);
                     }
                 });
     }
@@ -251,38 +237,6 @@ public class RxPermissions {
         }
         return Observable.concat(Observable.fromIterable(list));
     }
-
-    @TargetApi(Build.VERSION_CODES.M)
-    private Single<Permission> requestImplementation(final String permission) {
-        mRxPermissionsFragment.log("Requesting permission " + permission);
-        if (isGranted(permission)) {
-            // Already granted, or not Android M
-            // Return a granted Permission object.
-            return Single.just(new Permission(permission, true, false));
-        }
-
-        if (isRevoked(permission)) {
-            // Revoked by a policy, return a denied Permission object.
-            return Single.just(new Permission(permission, false, false));
-        }
-
-        SingleSubject<Permission> subject = mRxPermissionsFragment.getSingleSubjectByPermission(permission);
-        // Create a new subject if not exists
-        final String unrequestedPermission;
-        if (subject == null) {
-            unrequestedPermission = permission;
-            subject = SingleSubject.create();
-            mRxPermissionsFragment.setSingleSubjectForPermission(permission, subject);
-        } else {
-            unrequestedPermission = null;
-        }
-
-        if (unrequestedPermission != null) {
-            requestPermissionsFromFragment(new String[]{unrequestedPermission});
-        }
-        return Single.unsafeCreate(subject);
-    }
-
 
     /**
      * Invokes Activity.shouldShowRequestPermissionRationale and wraps
